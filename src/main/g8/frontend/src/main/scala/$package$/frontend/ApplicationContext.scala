@@ -2,7 +2,7 @@ package $package$.frontend
 
 import $package$.frontend.routing.{LoginPageState, RoutingRegistryDef, RoutingState, StatesToViewFactoryDef}
 import $package$.frontend.services.rpc.{NotificationsCenter, RPCService}
-import $package$.frontend.services.{TranslationsService, UserContextService}
+import $package$.frontend.services.{TranslationsService, UserContextService, WorkerService}
 import $package$.shared.model.SharedExceptions
 import $package$.shared.rpc.client.MainClientRPC
 import $package$.shared.rpc.server.MainServerRPC
@@ -35,6 +35,8 @@ $endif$
   val serverRpc: MainServerRPC = DefaultServerRPC[MainClientRPC, MainServerRPC](
     new RPCService(notificationsCenter), exceptionsRegistry = new SharedExceptions
   )
+
+  val workerService = new WorkerService("/scripts/worker.js")
 
   val translationsService: TranslationsService = new TranslationsService(serverRpc.translations())
   val userService: UserContextService = new UserContextService(serverRpc)

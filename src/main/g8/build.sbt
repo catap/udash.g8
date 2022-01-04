@@ -101,7 +101,7 @@ def sourceDirsSettings(baseMapper: File => File): Seq[Def.Setting[Seq[File]]] = 
 }
 
 lazy val root = project.in(file("."))
-  .aggregate(`shared-js`, `shared`, frontend, backend, packager)
+  .aggregate(`shared-js`, `shared`, frontend, worker, backend, packager)
   .settings(
     noPublishSettings,
     crossScalaVersions := Nil,
@@ -141,7 +141,7 @@ lazy val `shared-js` = jsProjectFor(shared, project)
     libraryDependencies ++= Dependencies.crossTestDeps.value
   )
 
-val frontendWebContent = "UdashStatics/WebContent"
+val webContent = "UdashStatics/WebContent"
 lazy val frontend = project.in(file("frontend"))
   .enablePlugins(ScalaJSPlugin, JSDependenciesPlugin) // enables Scala.js plugin in this module
   .dependsOn(`shared-js` % TestAndCompileDep)
@@ -159,12 +159,12 @@ lazy val frontend = project.in(file("frontend"))
     copyAssets := {
       IO.copyDirectory(
         sourceDirectory.value / "main/assets",
-        target.value / frontendWebContent
+        target.value / webContent
       )
     },
 
     // Compiles CSS files and put them in the target directory
-    cssDir := (Compile / fastOptJS / target).value / frontendWebContent / "styles",
+    cssDir := (Compile / fastOptJS / target).value / webContent / "styles",
     compileCss := Def.taskDyn {
       val dir = (Compile / cssDir).value
       val path = dir.absolutePath
@@ -187,16 +187,56 @@ lazy val frontend = project.in(file("frontend"))
     // Target files for Scala.js plugin
     Compile / fastOptJS / artifactPath :=
       (Compile / fastOptJS / target).value /
-        frontendWebContent / "scripts" / "frontend.js",
+        webContent / "scripts" / "frontend.js",
     Compile / fullOptJS / artifactPath :=
       (Compile / fullOptJS / target).value /
-        frontendWebContent / "scripts" / "frontend.js",
+        webContent / "scripts" / "frontend.js",
     Compile / packageJSDependencies / artifactPath :=
       (Compile / packageJSDependencies / target).value /
-        frontendWebContent / "scripts" / "frontend-deps.js",
+        webContent / "scripts" / "frontend-deps.js",
     Compile / packageMinifiedJSDependencies / artifactPath :=
       (Compile / packageMinifiedJSDependencies / target).value /
-        frontendWebContent / "scripts" / "frontend-deps.js",
+        webContent / "scripts" / "frontend-deps.js",
+
+    // Workaround for source JS dependencies overwriting the minified ones - just use the latter all the time
+    Compile / packageJSDependencies / skip := true,
+    (Compile / fastOptJS) := (Compile / fastOptJS).dependsOn(Compile / packageMinifiedJSDependencies).value
+  )
+
+lazy val worker = project.in(file("worker"))
+  .enablePlugins(ScalaJSPlugin) // enables Scala.js plugin in this module
+  .enablePlugins(JSDependenciesPlugin)
+  .dependsOn(`shared-js` % TestAndCompileDep)
+  .settings(
+    commonJsSettings,
+    libraryDependencies ++= Dependencies.workerDeps.value,
+    jsDependencies ++= Dependencies.workerJSDeps.value,
+
+    Compile / mainClass := Some("$package$.worker.JSLauncher"),
+    Compile / scalaJSUseMainModuleInitializer := true,
+    Test / scalaJSUseMainModuleInitializer := false,
+
+    // Compiles JS files without full optimizations
+    compileStatics := { (frontend / target).value / webContent / "scripts" },
+    compileStatics := compileStatics.dependsOn(
+      Compile / fastOptJS
+    ).value,
+
+    // Compiles JS files with full optimizations
+    compileAndOptimizeStatics := { (frontend / target).value / webContent / "scripts"},
+    compileAndOptimizeStatics := compileAndOptimizeStatics.dependsOn(
+      Compile / fullOptJS
+    ).value,
+
+    // Target files for Scala.js plugin
+    Compile / fastOptJS / artifactPath :=
+      (frontend / target).value / webContent / "scripts" / "worker.js",
+    Compile / fullOptJS / artifactPath :=
+      (frontend / target).value / webContent / "scripts" / "worker.js",
+    Compile / packageJSDependencies / artifactPath :=
+      (frontend / target).value / webContent / "scripts" / "worker-deps.js",
+    Compile / packageMinifiedJSDependencies / artifactPath :=
+      (frontend / target).value / webContent / "scripts" / "worker-deps.js",
 
     // Workaround for source JS dependencies overwriting the minified ones - just use the latter all the time
     Compile / packageJSDependencies / skip := true,
@@ -226,4 +266,11 @@ lazy val packager = project
       val frontendStatics = (frontend / Compile / compileAndOptimizeStatics).value
       (frontendStatics.allPaths --- frontendStatics) pair relativeTo(frontendStatics.getParentFile)
     },
+
+  // add worker statics to the package
+  Universal / mappings ++= {
+    import Path.relativeTo
+    val workerStatics = (worker / Compile / compileAndOptimizeStatics).value
+    (workerStatics.allPaths --- workerStatics) pair relativeTo(workerStatics.getParentFile)
+  },
   )

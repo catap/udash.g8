@@ -48,13 +48,14 @@ about these events via [Server -> Client RPC](http://guide.udash.io/#/rpc/server
 You receive a random set of permissions on every login, so sometimes you might not be able to 
 send or read messages.   
 
-The application consists of three modules: `shared`, `frontend` and `backend`. In every module you 
+The application consists of three modules: `shared`, `frontend`, `worker` and `backend`. In every module you 
 can find another a README.md file describing its content. 
 
 Briefly:
 * `shared` - contains a global model and a login of the application, it also keeps CSS styles definition and RPC interfaces;
 * `backend` - holds the server-side logic, it uses [Jetty](https://www.eclipse.org/jetty/) as the servlets container;
 * `frontend` - keeps views and the client's application logic. 
+* `worker` - an optional module which implement simple web worker.
 
 Each module contains tests based on [ScalaTest](http://www.scalatest.org/) and [ScalaMock](http://scalamock.org/).
 The `frontend` and `shared` modules use [scalajs-env-selenium](https://github.com/scala-js/scala-js-env-selenium) in order

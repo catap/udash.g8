@@ -79,6 +79,15 @@ $endif$
 
   ))
 
+  // Dependencies compiled to JavaScript code. Web Worker part.
+  val workerDeps = Def.setting(Seq(
+  ))
+
+  // JavaScript libraries dependencies. Web Worker part.
+  // Those will be added into frontend-deps.js
+  val workerJSDeps = Def.setting(Seq(
+  ))
+
   // Dependencies for JVM part of code
   val backendDeps = Def.setting(Seq(
     "io.udash" %% "udash-rpc" % udashVersion,
